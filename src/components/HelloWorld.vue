@@ -1,38 +1,26 @@
 <template>
 	<div class="hello">
+		<input type="text" v-model="id">
 		<button @click="getData">查询</button>
-		<div>{{urls}}</div>
+		<div>{{ urls }}</div>
 	</div>
 </template>
 
 <script>
-const superagent = require("superagent"),
-	cheerio = require("cheerio")
+import { getSawList } from "../assets/crawler"
 export default {
 	name: "HelloWorld",
-	props: {
-		msg: String
-	},
 	data() {
 		return {
+			id: null,
 			urls: []
 		}
 	},
 	methods: {
 		getData() {
-			let targetUrl = "https://nba.hupu.com/stats/players/pts"
-
-			superagent
-				.get(targetUrl)
-				.set("Access-Control-Allow-Origin", "*")
-				.withCredentials()
-				.end((err, res) => {
-					//页面dom在text里
-					let $ = cheerio.load(res.text)
-					$(".players_table .left a").each((index, element) => {
-						this.urls.push($(element).attr("href"))
-					})
-				})
+			getSawList(this.id).then(res => {
+				this.urls = res
+			})
 		}
 	}
 }
