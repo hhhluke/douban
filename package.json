@@ -15,11 +15,14 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
     "core-js": "^2.6.5",
+    "countup": "^1.8.2",
     "electron": "^5.0.5",
     "element-ui": "^2.9.2",
+    "sass-loader": "^7.1.0",
     "superagent": "^5.1.0",
     "vue": "^2.6.10",
-    "vue-router": "^3.0.3"
+    "vue-router": "^3.0.3",
+    "vuex": "^3.1.1"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^3.8.0",
@@ -41,19 +44,26 @@
   "eslintConfig": {
     "root": false,
     "env": {
-      "node": false
+      "node": true,
+      "es6": true,
+      "browser": true,
+      "commonjs": true
     },
     "extends": [
-      "plugin:vue/essential"
+      "plugin:vue/essential",
+      "@vue/prettier"
     ],
     "rules": {
-      "quotes": [
-        1,
-        "single"
-      ],
-      "semi": [
-        2,
-        "never"
+      "prettier/prettier": [
+        "warn",
+        { 
+          "no-console": "off",
+          "singleQuote": true,
+          "semi": false,
+          "trailingComma": "none",
+          "indent": [2, "tab", { "SwitchCase": 1, "VariableDeclarator": 1 }],
+          "no-tabs": 0
+        }
       ]
     },
     "parserOptions": {
