@@ -6,18 +6,18 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   state: {
     base: {
-      movie: { saw: 0, want: 0 },
-      book: { read: 0, want: 0 },
+      movie: { saw: 0, wish: 0 },
+      book: { read: 0, wish: 0 },
       photo: 0,
       friend: { star: 0, follower: 0 }
     },
     movie: {
       saw: 0,
-      want: 0
+      wish: 0
     },
     book: {
       saw: 0,
-      want: 0
+      wish: 0
     },
     user: {
       star: 0,

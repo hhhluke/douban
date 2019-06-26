@@ -1,8 +1,13 @@
 <template>
 	<div class="hello">
-		<input type="text" v-model="id">
-		<button @click="getData">查询</button>
-		<div>{{ urls }}</div>
+		<el-form :inline="true" :model="formInline" class="demo-form-inline">
+			<el-form-item label="豆瓣ID">
+				<el-input v-model="formInline.id" placeholder="ID"></el-input>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="getData">查询</el-button>
+			</el-form-item>
+		</el-form>
 		<el-row :gutter="20">
 			<el-col
 				:xs="12"
@@ -20,11 +25,14 @@
 				></info-card>
 			</el-col>
 		</el-row>
+		<el-row :gutter="20">
+			<el-button type="primary" @click="getMovie">查询电影</el-button>
+		</el-row>
 	</div>
 </template>
 
 <script>
-import { getBaseData } from "../assets/crawler"
+import { getBaseData, movieToExcel } from "../assets/crawler"
 import { mapState } from "vuex"
 import infoCard from "./infoCard"
 export default {
@@ -32,7 +40,9 @@ export default {
 	components: { infoCard },
 	data() {
 		return {
-			id: null,
+			formInline: {
+				id: 80780400
+			},
 			urls: []
 		}
 	},
@@ -51,7 +61,7 @@ export default {
 				{
 					title: "想看",
 					icon: "el-icon-monitor",
-					count: this.base.movie.want,
+					count: this.base.movie.wish,
 					color: "#19be6b"
 				},
 				{
@@ -63,7 +73,7 @@ export default {
 				{
 					title: "想读",
 					icon: "el-icon-reading",
-					count: this.base.book.want,
+					count: this.base.book.wish,
 					color: "#19be6b"
 				},
 				{
@@ -95,8 +105,11 @@ export default {
 	},
 	methods: {
 		async getData() {
-			let res = await getBaseData(this.id)
+			let res = await getBaseData(this.formInline.id)
 			this.$store.commit("setBase", res)
+		},
+		async getMovie() {
+			await movieToExcel(this.formInline.id)
 		}
 	}
 }
