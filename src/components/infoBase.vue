@@ -27,14 +27,18 @@
 		</el-row>
 		<el-row :gutter="20">
 			<el-button type="primary" @click="getMovie">查询电影</el-button>
+			<el-button type="primary" @click="demo">查询关注</el-button>
+			<el-button type="primary" @click="log">登录</el-button>
 		</el-row>
 	</div>
 </template>
 
 <script>
-import { getBaseData, movieToExcel } from "../assets/crawler"
+import { getBaseData, movieToExcel, getStar, log } from "../assets/crawler"
 import { mapState } from "vuex"
 import infoCard from "./infoCard"
+const { BrowserWindow } = require("electron")
+
 export default {
 	name: "HelloWorld",
 	components: { infoCard },
@@ -104,12 +108,30 @@ export default {
 		}
 	},
 	methods: {
+		log() {
+			log()
+		},
 		async getData() {
 			let res = await getBaseData(this.formInline.id)
 			this.$store.commit("setBase", res)
 		},
 		async getMovie() {
-			await movieToExcel(this.formInline.id)
+			const loading = this.$loading({
+				lock: true,
+				text: "Loading",
+				spinner: "el-icon-loading",
+				background: "rgba(0, 0, 0, 0.7)"
+			})
+			let res = await movieToExcel(this.formInline.id)
+			if (res) {
+				this.$message.success("导出成功!")
+			} else {
+				this.$message.error("失败，请检查文件是否处于打开状态,若是，请关闭该文件")
+			}
+			loading.close()
+		},
+		async demo() {
+			await getStar()
 		}
 	}
 }

@@ -1,6 +1,6 @@
 'use strict'
 
-import { app, protocol, BrowserWindow } from 'electron'
+import { app, protocol, BrowserWindow, ipcMain } from 'electron'
 import {
   createProtocol,
   installVueDevtools
@@ -10,6 +10,86 @@ const isDevelopment = process.env.NODE_ENV !== 'production'
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let win
+
+let win_db
+
+ipcMain.on('douban', (event, arg) => {
+  win_db = new BrowserWindow({
+    width: 1800,
+    height: 600,
+    // frame: false,
+    menu: null,
+    webPreferences: {
+      devTools: true
+    }
+  })
+  win_db.loadURL('https://accounts.douban.com/passport/login')
+  win_db.webContents.openDevTools()
+  let webContents = win_db.webContents
+  webContents.on('will-navigate', event => {
+    event.sender.send('douban-log', 'will-navigate')
+    // webContents.session.cookies.get({}, function(err, cookies) {
+    //   if (err) {
+    //     win_db.close() // 关闭登陆窗口
+    //     // return reject(err)
+    //   }
+    //   event.sender.send('douban-log', cookies)
+
+    //   event.preventDefault()
+    //   win_db.close()
+    // })
+  })
+  webContents.on('did-navigate', (e, url) => {
+    console.log('did-navigate', url)
+    event.sender.send('douban-log', 'did-navigate')
+  })
+  webContents.on(
+    'did-frame-navigate',
+    (
+      e,
+      url,
+      httpResponseCode,
+      httpStatusText,
+      isMainFrame,
+      frameProcessId,
+      frameRoutingId
+    ) => {
+      console.log('did-frame-navigate', url)
+      if (url === 'https://www.douban.com/') {
+        webContents.session.cookies.get({}, function(err, cookies) {
+          if (err) {
+            win_db.close() // 关闭登陆窗口
+            // return reject(err)
+          }
+          event.sender.send('douban-log', cookies)
+
+          event.preventDefault()
+          win_db.close()
+        })
+      }
+      event.sender.send('douban-log', 'did-frame-navigate')
+    }
+  )
+  // webContents.on('did-start-navigation', () => {
+  //   event.sender.send('douban-log', 'did-start-navigation')
+  // })
+  // webContents.on('did-navigate-in-pag', () => {
+  //   event.sender.send('douban-log', 'did-navigate-in-pag')
+  // })
+  // webContents.on('did-redirect-navigation', function() {
+  //   event.sender.send('douban-log', 'redirect')
+  //   // 这里可以看情况进行参数的传递，获取制定的 cookies
+  //   webContents.session.cookies.get({}, function(err, cookies) {
+  //     if (err) {
+  //       win_db.close() // 关闭登陆窗口
+  //       // return reject(err)
+  //     }
+  //     event.sender.send('douban-log', cookies)
+  //   })
+  // })
+  // const ses = win_db.webContents.session
+  event.sender.send('douban-log', 'hhh')
+})
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
