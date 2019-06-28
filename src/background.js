@@ -1,6 +1,6 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, ipcMain } from 'electron'
+import { app, protocol, BrowserWindow, ipcMain, session } from 'electron'
 import {
   createProtocol,
   installVueDevtools
@@ -43,33 +43,46 @@ ipcMain.on('douban', (event, arg) => {
     console.log('did-navigate', url)
     event.sender.send('douban-log', 'did-navigate')
   })
-  webContents.on(
-    'did-frame-navigate',
-    (
-      e,
-      url,
-      httpResponseCode,
-      httpStatusText,
-      isMainFrame,
-      frameProcessId,
-      frameRoutingId
-    ) => {
-      console.log('did-frame-navigate', url)
-      if (url === 'https://www.douban.com/') {
-        webContents.session.cookies.get({}, function(err, cookies) {
-          if (err) {
-            win_db.close() // 关闭登陆窗口
-            // return reject(err)
-          }
-          event.sender.send('douban-log', cookies)
-
-          event.preventDefault()
-          win_db.close()
+  webContents.on('did-frame-navigate', (_, url) => {
+    console.log('did-frame-navigate', url)
+    if (url === 'https://www.douban.com/') {
+      webContents
+        .executeJavaScript(`document.cookie;`, true)
+        .then(function(result) {
+          event.sender.send('db-cookie', result)
+          console.log(result)
         })
-      }
-      event.sender.send('douban-log', 'did-frame-navigate')
+      webContents
+        .executeJavaScript(`window._GLOBAL_NAV.USER_ID;`, true)
+        .then(function(result) {
+          event.sender.send('db-id', result)
+          console.log(result)
+        })
+      // webContents.session.cookies.get(
+      //   { url: 'https://www.douban.com' },
+      //   (err, cookies) => {
+      //     if (err) {
+      //       win_db.close() // 关闭登陆窗口
+      //       // return reject(err)
+      //     }
+      //     event.sender.send('cookie', cookies)
+
+      //     event.preventDefault()
+      //     win_db.close()
+      //   }
+      // )
+      // session.defaultSession.cookies
+      //   .get({ url: 'https://www.douban.com' })
+      //   .then(cookies => {
+      //     event.sender.send('cookie1', cookies)
+      //     console.log(cookies)
+      //   })
+      //   .catch(error => {
+      //     console.log(error)
+      //   })
     }
-  )
+    event.sender.send('douban-log', 'did-frame-navigate')
+  })
   // webContents.on('did-start-navigation', () => {
   //   event.sender.send('douban-log', 'did-start-navigation')
   // })

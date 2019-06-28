@@ -1,16 +1,30 @@
 const superagent = require('superagent')
 const cheerio = require('cheerio')
 const Excel = require('exceljs')
-const http = require('http')
-
+let db_id = ''
+let db_cookis = ''
 const { ipcRenderer } = require('electron')
 export function log() {
   ipcRenderer.send('douban', 'ping')
   ipcRenderer.on('reply', res => {
-    console.log('header', res)
+    console.log('reply', res)
   })
   ipcRenderer.on('douban-log', (event, arg) => {
-    console.log('客户端', event, arg) // prints "pong"
+    console.log('douban-log', event, arg) // prints "pong"
+  })
+  ipcRenderer.on('cookie', (event, arg) => {
+    console.log('cookie', event, arg) // prints "pong"
+  })
+  ipcRenderer.on('cookie1', (event, arg) => {
+    console.log('cookie1', event, arg) // prints "pong"
+  })
+  ipcRenderer.on('db-cookie', (e, arg) => {
+    console.log('db-cookie', e, arg)
+    db_cookis = arg
+  })
+  ipcRenderer.on('db-id', (e, arg) => {
+    console.log('db-id', e, arg)
+    db_id = arg
   })
 }
 import {
@@ -237,28 +251,36 @@ async function getWishBook(id) {
  * 获取关注列表
  * @param {Number} id
  */
-export async function getStar(id) {
-  let url = 'https://accounts.douban.com/login'
-  http.get('https://www.douban.com/service/auth2/auth')
-  // `https://www.douban.com/people/${id}/statuses`
-  // return await getDom(url).then($ => {
-  //   let _arr = []
-  //   $('.obu').each((_, item) => {
-  //     _arr.push({
-  //       name: $(item)
-  //         .find('dd a')
-  //         .text(),
-  //       link: $(item)
-  //         .find('dd a')
-  //         .attr('href'),
-  //       avatar: $(item)
-  //         .find('dt a img')
-  //         .attr('src')
-  //     })
-  //   })
-  //   console.log(_arr)
-  //   return _arr
-  // })
+export async function getStar() {
+  superagent
+    // .get(`https://www.douban.com/people/${db_id}/contacts`)
+    .get('https://www.douban.com/contacts/list')
+    .set('Cookie', db_cookis)
+    .end((err, res) => {
+      if (err) console.log(err)
+      var cookie = res.headers['set-cookie']
+      console.log('cookie', cookie)
+      let $ = cheerio.load(res.text)
+      let _arr = []
+      $('li.clearfix').each((_, item) => {
+        _arr.push({
+          name: $(item)
+            .find('.info h3 a')
+            .text(),
+          link: $(item)
+            .find('.info h3 a')
+            .attr('href'),
+          address: $(item)
+            .find('.info p .loc')
+            .text(),
+          signature: $(item)
+            .find('.info p .signature')
+            .text()
+        })
+      })
+      console.log('star', _arr)
+      return _arr
+    })
 }
 
 /**
