@@ -28,12 +28,13 @@ function isNum(s) {
 /**
  * 根据总数生产豆瓣页码数组
  * 30=》 [0,15]
- * @param {*} num
+ * @param {Number} num
+ * @param {Number} count
  * @returns {Array}
  */
-export const pagesToArray = num => {
+export const pagesToArray = (num, count) => {
   if (!isNum(num)) return []
-  return [...new Array(Math.ceil(num / 15)).keys()].map(a => a * 15)
+  return [...new Array(Math.ceil(num / count)).keys()].map(a => a * count)
 }
 /**
  * 扁平化数组

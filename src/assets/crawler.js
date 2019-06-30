@@ -1,6 +1,8 @@
 const superagent = require('superagent')
 const cheerio = require('cheerio')
 const Excel = require('exceljs')
+const COUNT_15 = 15
+const COUNT_20 = 20
 let db_id = ''
 let db_cookis = ''
 const { ipcRenderer } = require('electron')
@@ -46,6 +48,7 @@ function getDom(url) {
   return new Promise((resolve, rej) => {
     superagent
       .get(url)
+      .set('Cookie', db_cookis)
       .set('Access-Control-Allow-Origin', '*')
       .withCredentials()
       .end((err, res) => {
@@ -67,7 +70,7 @@ export const getBaseData = async id => {
         $(`#${item} .pl a`).map((_, item) => getNumFromString($(item).text()))
       )
     })
-    _data.friend.push(getNumFromString($('.rev-link a').text()))
+    _data.friend[1] = getNumFromString($('.rev-link a').text())
     return _data
   })
 
@@ -88,7 +91,7 @@ export const getBaseData = async id => {
  * @returns {Array}
  */
 async function getSawMovie(id) {
-  let pages = pagesToArray(store.state.base.movie.saw)
+  let pages = pagesToArray(store.state.base.movie.saw, COUNT_15)
   return flattenPromise(
     pages.map(async item => {
       let url = `https://movie.douban.com/people/${id}/collect?start=${item}&sort=time&rating=all&filter=all&mode=grid`
@@ -135,7 +138,7 @@ async function getSawMovie(id) {
  * @returns {Array}
  */
 async function getWishMovie(id) {
-  let pages = pagesToArray(store.state.base.movie.wish)
+  let pages = pagesToArray(store.state.base.movie.wish, COUNT_15)
   return flattenPromise(
     pages.map(async item => {
       let url = `https://movie.douban.com/people/${id}/wish?start=${item}&sort=time&rating=all&filter=all&mode=grid`
@@ -169,7 +172,7 @@ async function getWishMovie(id) {
  * @returns {Array}
  */
 async function getSawBook(id) {
-  let pages = pagesToArray(store.state.base.book.read)
+  let pages = pagesToArray(store.state.base.book.read, COUNT_15)
   return flattenPromise(
     pages.map(async item => {
       let url = `https://book.douban.com/people/${id}/collect?start=${item}&sort=time&rating=all&filter=all&mode=grid`
@@ -213,7 +216,7 @@ async function getSawBook(id) {
  * @returns {Array}
  */
 async function getWishBook(id) {
-  let pages = pagesToArray(store.state.base.book.wish)
+  let pages = pagesToArray(store.state.base.book.wish, COUNT_15)
   return flattenPromise(
     pages.map(async item => {
       let url = `https://book.douban.com/people/${id}/wish?start=${item}&sort=time&rating=all&filter=all&mode=grid`
@@ -252,50 +255,52 @@ async function getWishBook(id) {
  * @param {Number} id
  */
 export async function getStar() {
-  superagent
-    // .get(`https://www.douban.com/people/${db_id}/contacts`)
-    .get('https://www.douban.com/contacts/list')
-    .set('Cookie', db_cookis)
-    .end((err, res) => {
-      if (err) console.log(err)
-      var cookie = res.headers['set-cookie']
-      console.log('cookie', cookie)
-      let $ = cheerio.load(res.text)
-      let _arr = []
-      $('li.clearfix').each((_, item) => {
-        _arr.push({
-          name: $(item)
-            .find('.info h3 a')
-            .text(),
-          link: $(item)
-            .find('.info h3 a')
-            .attr('href'),
-          address: $(item)
-            .find('.info p .loc')
-            .text(),
-          signature: $(item)
-            .find('.info p .signature')
-            .text()
+  let pages = pagesToArray(store.state.base.friend.star, COUNT_20)
+  return flattenPromise(
+    pages.map(async item => {
+      let url = `https://www.douban.com/contacts/list?tag=0&start=${item}`
+      return await getDom(url).then($ => {
+        let _arr = []
+        $('li.clearfix').each((_, item) => {
+          _arr.push({
+            name: $(item)
+              .find('.info h3 a')
+              .text(),
+            link: $(item)
+              .find('.info h3 a')
+              .attr('href'),
+            address: $(item)
+              .find('.info p .loc')
+              .text()
+              .replace('常居：', ''),
+            signature: $(item)
+              .find('.info p .signature')
+              .text()
+              .replace('签名：', '')
+          })
         })
+        return _arr
       })
-      console.log('star', _arr)
-      return _arr
     })
+  )
 }
 
 /**
  * 获取被关注列表
  * @param {Number} id
  */
-async function getFollower(id) {
-  let pages = pagesToArray(store.state.base.friend.follower)
+async function getFollower() {
+  let pages = pagesToArray(store.state.base.friend.follower, COUNT_20)
   return flattenPromise(
     pages.map(async item => {
-      let url = `https://www.douban.com/people/${id}/contacts`
+      let url = `https://www.douban.com/contacts/rlist?start=${item}`
       return await getDom(url).then($ => {
         let _arr = []
-        $('.subject-item .info').each((_, item) => {
-          _arr.push({})
+        $('li.clearfix .info h3 a:first-child').each((_, item) => {
+          _arr.push({
+            name: $(item).text(),
+            link: $(item).attr('href')
+          })
         })
         return _arr
       })
@@ -312,13 +317,27 @@ export const movieToExcel = async id => {
   let resSawMovie = await getSawMovie(id),
     resWishMovie = await getWishMovie(id),
     resSawBook = await getSawBook(id),
-    resWishBook = await getWishBook(id)
+    resWishBook = await getWishBook(id),
+    resStar = await getStar(),
+    resFollower = await getFollower()
 
   let workbook = new Excel.Workbook()
   let sheetSawMovie = workbook.addWorksheet('电影-已看'),
     sheetWishMovie = workbook.addWorksheet('电影-想看'),
     sheetSawBook = workbook.addWorksheet('图书-已读'),
-    sheetWishBook = workbook.addWorksheet('图书-想读')
+    sheetWishBook = workbook.addWorksheet('图书-想读'),
+    sheetStar = workbook.addWorksheet('关注'),
+    sheetFollower = workbook.addWorksheet('被关注')
+  sheetStar.columns = [
+    { header: '名称', key: 'name', width: 10 },
+    { header: '链接', key: 'link', width: 46 },
+    { header: '地址', key: 'address', width: 10 },
+    { header: '签名', key: 'signature', width: 20 }
+  ]
+  sheetFollower.columns = [
+    { header: '名称', key: 'name', width: 10 },
+    { header: '链接', key: 'link', width: 46 }
+  ]
   sheetSawMovie.columns = [
     { header: 'Id', key: 'id', width: 10 },
     { header: '电影名称', key: 'movie', width: 30 },
@@ -334,7 +353,7 @@ export const movieToExcel = async id => {
     { header: '日期', key: 'date', width: 10 }
   ]
   sheetSawBook.columns = [
-    { header: 'Id', key: 'id', width: 10 },
+    { header: 'Id', key: 'id', width: 16 },
     { header: '书名', key: 'book', width: 32 },
     { header: '作者', key: 'author', width: 16 },
     { header: '译者', key: 'translator', width: 16 },
@@ -355,9 +374,10 @@ export const movieToExcel = async id => {
   sheetWishMovie.addRows(resWishMovie)
   sheetSawBook.addRows(resSawBook)
   sheetWishBook.addRows(resWishBook)
-
+  sheetStar.addRows(resStar)
+  sheetFollower.addRows(resFollower)
   return await workbook.xlsx
-    .writeFile('movie.xlsx')
+    .writeFile('douban.xlsx')
     .then(function() {
       return true
     })

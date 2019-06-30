@@ -131,7 +131,8 @@ export default {
 			loading.close()
 		},
 		async demo() {
-			await getStar()
+			let res = await getStar()
+			console.log(res)
 		}
 	}
 }
