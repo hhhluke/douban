@@ -1,6 +1,7 @@
 const superagent = require('superagent')
 const cheerio = require('cheerio')
 const Excel = require('exceljs')
+const fs = require('fs')
 const COUNT_15 = 15
 const COUNT_20 = 20
 let db_id = ''
@@ -36,6 +37,8 @@ import {
   flatten,
   getDateFromString
 } from './utils'
+import { getBooks } from './book'
+import { getMovies } from './book'
 import store from '../store'
 
 /**
@@ -44,7 +47,7 @@ import store from '../store'
  * @param {String} url
  * @returns {$}
  */
-function getDom(url) {
+export function getDom(url) {
   return new Promise((resolve, rej) => {
     superagent
       .get(url)
@@ -64,25 +67,28 @@ export const getBaseData = async id => {
   let url = `https://www.douban.com/people/${id}`
   //获取基础数据
   let res = await getDom(url).then($ => {
-    let _data = {}
-    ;['movie', 'book', 'friend', 'photo'].forEach(item => {
-      _data[item] = Array.from(
-        $(`#${item} .pl a`).map((_, item) => getNumFromString($(item).text()))
-      )
+    let _data = {
+      movie: {},
+      book: {},
+      game: {},
+      music: {},
+      photo: 0,
+      friend: {}
+    }
+    ;['movie', 'book', 'music', 'game'].forEach(item => {
+      $(`#${item} .pl a`).each((_, a) => {
+        let _src = $(a).attr('href'),
+          _num = getNumFromString($(a).text())
+        if (_src.includes('wish')) _data[item]['wish'] = _num
+        if (_src.includes('collect')) _data[item]['collect'] = _num
+      })
     })
-    _data.friend[1] = getNumFromString($('.rev-link a').text())
+    _data.photo = getNumFromString($($(`#photo h2 .pl a`).get(0)).text())
+    _data.friend.star = getNumFromString($(`#friend .pl a`).text())
+    _data.friend.follower = getNumFromString($('.rev-link a').text())
     return _data
   })
-
-  return {
-    movie: {
-      saw: res.movie[2],
-      wish: res.movie[1]
-    },
-    book: { read: res.book[2], wish: res.book[1] },
-    photo: res.photo[0],
-    friend: { star: res.friend[0], follower: res.friend[1] }
-  }
+  return res
 }
 /**
  *获取已看电影数据
@@ -166,91 +172,6 @@ async function getWishMovie(id) {
 }
 
 /**
- *获取已看图书数据
- * @param {String} url
- * @param {Number} id
- * @returns {Array}
- */
-async function getSawBook(id) {
-  let pages = pagesToArray(store.state.base.book.read, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://book.douban.com/people/${id}/collect?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.subject-item .info').each((_, item) => {
-          let _data = $(item)
-            .find('.pub')
-            .text()
-            .split('/')
-            .map(item => item.trim())
-          _arr.push({
-            book: $(item)
-              .find('h2 a')
-              .attr('title'),
-            author: _data[0],
-            translator: _data[1],
-            link: $(item)
-              .find('h2 a')
-              .attr('href'),
-            comment: $(item)
-              .find('.comment')
-              .text()
-              .trim(),
-            date: getDateFromString(
-              $(item)
-                .find('.date')
-                .text()
-            )
-          })
-        })
-        return _arr
-      })
-    })
-  )
-}
-/**
- *获取想看图书数据
- * @param {String} url
- * @param {Number} id
- * @returns {Array}
- */
-async function getWishBook(id) {
-  let pages = pagesToArray(store.state.base.book.wish, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://book.douban.com/people/${id}/wish?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.subject-item .info').each((_, item) => {
-          let _data = $(item)
-            .find('.pub')
-            .text()
-            .split('/')
-            .map(item => item.trim())
-          _arr.push({
-            book: $(item)
-              .find('h2 a')
-              .attr('title'),
-            author: _data[0],
-            translator: _data[1],
-            link: $(item)
-              .find('h2 a')
-              .attr('href'),
-            date: getDateFromString(
-              $(item)
-                .find('.date')
-                .text()
-            )
-          })
-        })
-        return _arr
-      })
-    })
-  )
-}
-
-/**
  * 获取关注列表
  * @param {Number} id
  */
@@ -314,13 +235,10 @@ async function getFollower() {
  * @returns {Excel}
  */
 export const movieToExcel = async id => {
-  let resSawMovie = await getSawMovie(id),
-    resWishMovie = await getWishMovie(id),
-    resSawBook = await getSawBook(id),
-    resWishBook = await getWishBook(id),
-    resStar = await getStar(),
+  let resStar = await getStar(),
     resFollower = await getFollower()
-
+  let [resSawMovie, resWishMovie] = await getMovies(id)
+  let [resSawBook, resWishBook] = await getBooks(id)
   let workbook = new Excel.Workbook()
   let sheetSawMovie = workbook.addWorksheet('电影-已看'),
     sheetWishMovie = workbook.addWorksheet('电影-想看'),
@@ -384,4 +302,41 @@ export const movieToExcel = async id => {
     .catch(e => {
       return false
     })
+}
+
+import html2Canvas from 'html2canvas'
+import JsPDF from 'jspdf'
+export const pdf = async () => {
+  let url = `https://www.douban.com/?p=1`
+  return await getDom(url).then($ => {
+    fs.writeFile('./a.html', $.html(), res => {
+      console.log(res)
+    })
+    // html2Canvas($('#statuses').get(0), {
+    //   allowTaint: true
+    // }).then(function(canvas) {
+    //   let contentWidth = canvas.width
+    //   let contentHeight = canvas.height
+    //   let pageHeight = (contentWidth / 592.28) * 841.89
+    //   let leftHeight = contentHeight
+    //   let position = 0
+    //   const imgWidth = 595.28
+    //   let imgHeight = (592.28 / contentWidth) * contentHeight
+    //   let pageData = canvas.toDataURL('image/jpeg', 1.0)
+    //   let PDF = new JsPDF('', 'pt', 'a4')
+    //   if (leftHeight < pageHeight) {
+    //     PDF.addImage(pageData, 'JPEG', 0, 10, imgWidth, imgHeight)
+    //   } else {
+    //     while (leftHeight > 0) {
+    //       PDF.addImage(pageData, 'JPEG', 0, position, imgWidth, imgHeight)
+    //       leftHeight -= pageHeight
+    //       position -= 841.89
+    //       if (leftHeight > 0) {
+    //         PDF.addPage()
+    //       }
+    //     }
+    //   }
+    //   PDF.save('db.pdf')
+    // })
+  })
 }

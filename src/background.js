@@ -23,7 +23,7 @@ ipcMain.on('douban', (event, arg) => {
       devTools: true
     }
   })
-  win_db.loadURL('https://accounts.douban.com/passport/login')
+  win_db.loadURL('https://www.douban.com')
   win_db.webContents.openDevTools()
   let webContents = win_db.webContents
   webContents.on('will-navigate', event => {

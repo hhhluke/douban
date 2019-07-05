@@ -5,9 +5,7 @@
 				<i :class="icon"></i>
 			</div>
 			<div class="right">
-				<count-to :end="count">
-					<slot name="right">111</slot>
-				</count-to>
+				<count-to :end="count? count : 0"></count-to>
 				<p>{{ title }}</p>
 			</div>
 		</div>

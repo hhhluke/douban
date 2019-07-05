@@ -29,12 +29,15 @@
 			<el-button type="primary" @click="getMovie">查询电影</el-button>
 			<el-button type="primary" @click="demo">查询关注</el-button>
 			<el-button type="primary" @click="log">登录</el-button>
+			<el-button type="primary" @click="pdf">广播</el-button>
+			<el-button type="primary" @click="img">图片</el-button>
 		</el-row>
 	</div>
 </template>
 
 <script>
-import { getBaseData, movieToExcel, getStar, log } from "../assets/crawler"
+import { getBaseData, movieToExcel, getStar, log, pdf } from "../assets/crawler"
+import { getImgs } from "../assets/image"
 import { mapState } from "vuex"
 import infoCard from "./infoCard"
 const { BrowserWindow } = require("electron")
@@ -45,7 +48,7 @@ export default {
 	data() {
 		return {
 			formInline: {
-				id: 80780400
+				id: "Skiboo"
 			},
 			urls: []
 		}
@@ -59,7 +62,7 @@ export default {
 				{
 					title: "看过",
 					icon: "el-icon-video-play",
-					count: this.base.movie.saw,
+					count: this.base.movie.collect,
 					color: "#2d8cf0"
 				},
 				{
@@ -71,13 +74,37 @@ export default {
 				{
 					title: "读过",
 					icon: "el-icon-collection",
-					count: this.base.book.read,
+					count: this.base.book.collect,
 					color: "#2d8cf0"
 				},
 				{
 					title: "想读",
 					icon: "el-icon-reading",
 					count: this.base.book.wish,
+					color: "#19be6b"
+				},
+				{
+					title: "玩过",
+					icon: "el-icon-reading",
+					count: this.base.game.wish,
+					color: "#19be6b"
+				},
+				{
+					title: "想玩",
+					icon: "el-icon-reading",
+					count: this.base.game.wish,
+					color: "#19be6b"
+				},
+				{
+					title: "听过",
+					icon: "el-icon-reading",
+					count: this.base.music.wish,
+					color: "#19be6b"
+				},
+				{
+					title: "想听",
+					icon: "el-icon-reading",
+					count: this.base.music.wish,
 					color: "#19be6b"
 				},
 				{
@@ -108,8 +135,14 @@ export default {
 		}
 	},
 	methods: {
+		img() {
+			getImgs(this.formInline.id)
+		},
 		log() {
 			log()
+		},
+		pdf() {
+			pdf()
 		},
 		async getData() {
 			let res = await getBaseData(this.formInline.id)
