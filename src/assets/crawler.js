@@ -37,8 +37,8 @@ import {
   flatten,
   getDateFromString
 } from './utils'
-import { getBooks } from './book'
-import { getMovies } from './book'
+import { bookToExcel } from './book'
+import { getMovies, movieToExcel } from './movie'
 import store from '../store'
 
 /**
@@ -89,86 +89,6 @@ export const getBaseData = async id => {
     return _data
   })
   return res
-}
-/**
- *获取已看电影数据
- * @param {String} url
- * @param {Number} id
- * @returns {Array}
- */
-async function getSawMovie(id) {
-  let pages = pagesToArray(store.state.base.movie.saw, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://movie.douban.com/people/${id}/collect?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.grid-view .item .info').each((_, item) => {
-          _arr.push({
-            movie: $(item)
-              .find('.title a em')
-              .text()
-              .split('/')[0]
-              .trim(),
-            link: $(item)
-              .find('.title a')
-              .attr('href'),
-            date: $(item)
-              .find('.date')
-              .text(),
-            rank: $(item)
-              .find('.date')
-              .prev()
-              .attr('class')
-              ? getNumFromString(
-                  $(item)
-                    .find('.date')
-                    .prev()
-                    .attr('class')
-                )
-              : '',
-            comment: $(item)
-              .find('.comment')
-              .text()
-          })
-        })
-        return _arr
-      })
-    })
-  )
-}
-/**
- *获取想看电影数据
- * @param {String} url
- * @param {Number} id
- * @returns {Array}
- */
-async function getWishMovie(id) {
-  let pages = pagesToArray(store.state.base.movie.wish, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://movie.douban.com/people/${id}/wish?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.grid-view .item .info').each((_, item) => {
-          _arr.push({
-            movie: $(item)
-              .find('.title a em')
-              .text()
-              .split('/')[0]
-              .trim(),
-            link: $(item)
-              .find('.title a')
-              .attr('href'),
-            date: $(item)
-              .find('.date')
-              .text()
-          })
-        })
-        return _arr
-      })
-    })
-  )
 }
 
 /**
@@ -228,115 +148,22 @@ async function getFollower() {
     })
   )
 }
-/**
- *
- * 电影数据转excel
- * @param {Number} id
- * @returns {Excel}
- */
-export const movieToExcel = async id => {
-  let resStar = await getStar(),
-    resFollower = await getFollower()
-  let [resSawMovie, resWishMovie] = await getMovies(id)
-  let [resSawBook, resWishBook] = await getBooks(id)
-  let workbook = new Excel.Workbook()
-  let sheetSawMovie = workbook.addWorksheet('电影-已看'),
-    sheetWishMovie = workbook.addWorksheet('电影-想看'),
-    sheetSawBook = workbook.addWorksheet('图书-已读'),
-    sheetWishBook = workbook.addWorksheet('图书-想读'),
-    sheetStar = workbook.addWorksheet('关注'),
-    sheetFollower = workbook.addWorksheet('被关注')
-  sheetStar.columns = [
-    { header: '名称', key: 'name', width: 10 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '地址', key: 'address', width: 10 },
-    { header: '签名', key: 'signature', width: 20 }
-  ]
-  sheetFollower.columns = [
-    { header: '名称', key: 'name', width: 10 },
-    { header: '链接', key: 'link', width: 46 }
-  ]
-  sheetSawMovie.columns = [
-    { header: 'Id', key: 'id', width: 10 },
-    { header: '电影名称', key: 'movie', width: 30 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '简评', key: 'comment', width: 20 },
-    { header: '评分', key: 'rank', width: 10 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
-  sheetWishMovie.columns = [
-    { header: 'Id', key: 'id', width: 10 },
-    { header: '电影名称', key: 'movie', width: 30 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
-  sheetSawBook.columns = [
-    { header: 'Id', key: 'id', width: 16 },
-    { header: '书名', key: 'book', width: 32 },
-    { header: '作者', key: 'author', width: 16 },
-    { header: '译者', key: 'translator', width: 16 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '简评', key: 'comment', width: 10 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
-  sheetWishBook.columns = [
-    { header: 'Id', key: 'id', width: 10 },
-    { header: '书名', key: 'book', width: 32 },
-    { header: '作者', key: 'author', width: 16 },
-    { header: '译者', key: 'translator', width: 16 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
 
-  sheetSawMovie.addRows(resSawMovie)
-  sheetWishMovie.addRows(resWishMovie)
-  sheetSawBook.addRows(resSawBook)
-  sheetWishBook.addRows(resWishBook)
-  sheetStar.addRows(resStar)
-  sheetFollower.addRows(resFollower)
+/**
+ * 简单备份(书影音照片)
+ * @param {*} id
+ * @returns
+ */
+export const backup = async id => {
+  let workbook = new Excel.Workbook()
+  await movieToExcel(id, workbook)
+  await bookToExcel(id, workbook)
   return await workbook.xlsx
-    .writeFile('douban.xlsx')
+    .writeFile(`douban${id}.xlsx`)
     .then(function() {
       return true
     })
     .catch(e => {
       return false
     })
-}
-
-import html2Canvas from 'html2canvas'
-import JsPDF from 'jspdf'
-export const pdf = async () => {
-  let url = `https://www.douban.com/?p=1`
-  return await getDom(url).then($ => {
-    fs.writeFile('./a.html', $.html(), res => {
-      console.log(res)
-    })
-    // html2Canvas($('#statuses').get(0), {
-    //   allowTaint: true
-    // }).then(function(canvas) {
-    //   let contentWidth = canvas.width
-    //   let contentHeight = canvas.height
-    //   let pageHeight = (contentWidth / 592.28) * 841.89
-    //   let leftHeight = contentHeight
-    //   let position = 0
-    //   const imgWidth = 595.28
-    //   let imgHeight = (592.28 / contentWidth) * contentHeight
-    //   let pageData = canvas.toDataURL('image/jpeg', 1.0)
-    //   let PDF = new JsPDF('', 'pt', 'a4')
-    //   if (leftHeight < pageHeight) {
-    //     PDF.addImage(pageData, 'JPEG', 0, 10, imgWidth, imgHeight)
-    //   } else {
-    //     while (leftHeight > 0) {
-    //       PDF.addImage(pageData, 'JPEG', 0, position, imgWidth, imgHeight)
-    //       leftHeight -= pageHeight
-    //       position -= 841.89
-    //       if (leftHeight > 0) {
-    //         PDF.addPage()
-    //       }
-    //     }
-    //   }
-    //   PDF.save('db.pdf')
-    // })
-  })
 }

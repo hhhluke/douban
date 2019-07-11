@@ -6,6 +6,7 @@
 			</el-form-item>
 			<el-form-item>
 				<el-button type="primary" @click="getData">查询</el-button>
+				<el-button type="primary" @click="getBackup">简单备份</el-button>
 			</el-form-item>
 		</el-form>
 		<el-row :gutter="20">
@@ -36,8 +37,9 @@
 </template>
 
 <script>
-import { getBaseData, movieToExcel, getStar, log, pdf } from "../assets/crawler"
+import { getBaseData, movieToExcel, getStar, log, pdf, backup } from "../assets/crawler"
 import { getImgs } from "../assets/image"
+import { getSaw } from "../assets/music"
 import { mapState } from "vuex"
 import infoCard from "./infoCard"
 const { BrowserWindow } = require("electron")
@@ -98,7 +100,7 @@ export default {
 				{
 					title: "听过",
 					icon: "el-icon-reading",
-					count: this.base.music.wish,
+					count: this.base.music.collect,
 					color: "#19be6b"
 				},
 				{
@@ -135,14 +137,18 @@ export default {
 		}
 	},
 	methods: {
+		getBackup() {
+			backup(this.formInline.id)
+		},
 		img() {
 			getImgs(this.formInline.id)
 		},
 		log() {
 			log()
 		},
-		pdf() {
-			pdf()
+		async pdf() {
+			let a = await getSaw()
+			console.log(a)
 		},
 		async getData() {
 			let res = await getBaseData(this.formInline.id)

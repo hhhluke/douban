@@ -1,3 +1,5 @@
+var async = require('async')
+const CONCURRENT = 5
 /**
  * 从字符串里解析数值
  * @param {String} str
@@ -57,4 +59,19 @@ export const flatten = arr => {
  */
 export const flattenPromise = async arr => {
   return flatten(await Promise.all(arr))
+}
+
+/**
+ * 控制并发数，返回扁平化数据
+ * @param {Array} pages
+ * @param {Function} fn
+ * @returns {Array}
+ */
+export const mapLimit = (pages, fn) => {
+  return new Promise((resolve, reject) => {
+    async.mapLimit(pages, CONCURRENT, fn, (err, res) => {
+      resolve(flatten(res))
+      if (err) reject(err)
+    })
+  })
 }
