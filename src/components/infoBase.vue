@@ -6,7 +6,15 @@
 			</el-form-item>
 			<el-form-item>
 				<el-button type="primary" @click="getData">查询</el-button>
-				<el-button type="primary" @click="getBackup">简单备份</el-button>
+				<el-popover
+					placement="top-start"
+					title="简单备份"
+					width="200"
+					trigger="hover"
+					content="只能备份书影音相册"
+				>
+					<el-button slot="reference" type="primary" @click="getBackup">简单备份</el-button>
+				</el-popover>
 			</el-form-item>
 		</el-form>
 		<el-row :gutter="20">
@@ -30,16 +38,19 @@
 			<el-button type="primary" @click="getMovie">查询电影</el-button>
 			<el-button type="primary" @click="demo">查询关注</el-button>
 			<el-button type="primary" @click="log">登录</el-button>
-			<el-button type="primary" @click="pdf">广播</el-button>
+			<el-button type="primary" @click="music">音乐</el-button>
 			<el-button type="primary" @click="img">图片</el-button>
+			<el-button type="primary" @click="game">游戏</el-button>
 		</el-row>
 	</div>
 </template>
 
 <script>
-import { getBaseData, movieToExcel, getStar, log, pdf, backup } from "../assets/crawler"
+import { getBaseData, movieToExcel, getStar, log, backup } from "../assets/crawler"
 import { getImgs } from "../assets/image"
-import { getSaw } from "../assets/music"
+import { getMusics } from "../assets/music"
+import { getMovies } from "../assets/movie"
+import { getGames } from "../assets/game"
 import { mapState } from "vuex"
 import infoCard from "./infoCard"
 const { BrowserWindow } = require("electron")
@@ -83,12 +94,12 @@ export default {
 					title: "想读",
 					icon: "el-icon-reading",
 					count: this.base.book.wish,
-					color: "#19be6b"
+					color: "#ff9900"
 				},
 				{
 					title: "玩过",
 					icon: "el-icon-reading",
-					count: this.base.game.wish,
+					count: this.base.game.collect,
 					color: "#19be6b"
 				},
 				{
@@ -143,31 +154,37 @@ export default {
 		img() {
 			getImgs(this.formInline.id)
 		},
+		async game() {
+			let res = await getGames(this.formInline.id)
+			console.log("game", res)
+		},
 		log() {
 			log()
 		},
-		async pdf() {
-			let a = await getSaw()
-			console.log(a)
+		async music() {
+			let a = await getMusics(this.formInline.id)
+			console.log("music", a)
 		},
 		async getData() {
 			let res = await getBaseData(this.formInline.id)
 			this.$store.commit("setBase", res)
 		},
 		async getMovie() {
-			const loading = this.$loading({
-				lock: true,
-				text: "Loading",
-				spinner: "el-icon-loading",
-				background: "rgba(0, 0, 0, 0.7)"
-			})
-			let res = await movieToExcel(this.formInline.id)
-			if (res) {
-				this.$message.success("导出成功!")
-			} else {
-				this.$message.error("失败，请检查文件是否处于打开状态,若是，请关闭该文件")
-			}
-			loading.close()
+			let res = await getMovies(this.formInline.id)
+			console.log(res)
+			// const loading = this.$loading({
+			// 	lock: true,
+			// 	text: "Loading",
+			// 	spinner: "el-icon-loading",
+			// 	background: "rgba(0, 0, 0, 0.7)"
+			// })
+			// let res = await movieToExcel(this.formInline.id)
+			// if (res) {
+			// 	this.$message.success("导出成功!")
+			// } else {
+			// 	this.$message.error("失败，请检查文件是否处于打开状态,若是，请关闭该文件")
+			// }
+			// loading.close()
 		},
 		async demo() {
 			let res = await getStar()

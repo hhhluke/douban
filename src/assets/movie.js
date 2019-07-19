@@ -98,7 +98,7 @@ async function getWishMovie(id) {
  * @returns {Array}
  */
 export const getMovies = async id => {
-  return [getSawMovie(id), getWishMovie(id)]
+  return [await getSawMovie(id), await getWishMovie(id)]
 }
 
 /**

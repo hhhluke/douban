@@ -39,6 +39,8 @@ import {
 } from './utils'
 import { bookToExcel } from './book'
 import { getMovies, movieToExcel } from './movie'
+import { musicToExcel } from './music'
+import { getImgs } from './image'
 import store from '../store'
 
 /**
@@ -151,19 +153,21 @@ async function getFollower() {
 
 /**
  * 简单备份(书影音照片)
- * @param {*} id
+ * @param {Number/String} id
  * @returns
  */
 export const backup = async id => {
   let workbook = new Excel.Workbook()
   await movieToExcel(id, workbook)
   await bookToExcel(id, workbook)
+  await musicToExcel(id, workbook)
+  await getImgs(id)
   return await workbook.xlsx
     .writeFile(`douban${id}.xlsx`)
     .then(function() {
       return true
     })
-    .catch(e => {
+    .catch(_ => {
       return false
     })
 }
