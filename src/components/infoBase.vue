@@ -5,6 +5,21 @@
 				<el-input v-model="formInline.id" placeholder="ID"></el-input>
 			</el-form-item>
 			<el-form-item>
+				{{checkedCities}}
+				<el-checkbox v-model="checkAll" @change="handleCheckAllChange">全选</el-checkbox>
+				<div style="margin: 15px 0;"></div>
+				<el-checkbox-group
+					v-model="checkedCities"
+					@change="handleCheckedCitiesChange"
+				>
+					<el-checkbox
+						v-for="(item,key) in categories"
+						:label="key"
+						:key="key"
+					>{{item}}</el-checkbox>
+				</el-checkbox-group>
+			</el-form-item>
+			<el-form-item>
 				<el-button type="primary" @click="getData">查询</el-button>
 				<el-popover
 					placement="top-start"
@@ -53,13 +68,22 @@ import { getMovies } from "../assets/movie"
 import { getGames } from "../assets/game"
 import { mapState } from "vuex"
 import infoCard from "./infoCard"
-const { BrowserWindow } = require("electron")
 
 export default {
 	name: "HelloWorld",
 	components: { infoCard },
 	data() {
 		return {
+			checkAll: false,
+			checkedCities: [],
+			categories: {
+				movie: "电影",
+				music: "音乐",
+				book: "图书",
+				game: "游戏",
+				photo: "相册",
+				diary: "日记"
+			},
 			formInline: {
 				id: "Skiboo"
 			},
@@ -148,6 +172,13 @@ export default {
 		}
 	},
 	methods: {
+		handleCheckAllChange(val) {
+			this.checkedCities = val ? Object.keys(this.categories) : []
+		},
+		handleCheckedCitiesChange(value) {
+			let checkedCount = value.length
+			this.checkAll = checkedCount === Object.keys(this.categories).length
+		},
 		getBackup() {
 			backup(this.formInline.id)
 		},
