@@ -1,24 +1,27 @@
 <template>
 	<div class="hello">
-		<el-form :inline="true" :model="formInline" class="demo-form-inline">
-			<el-form-item label="豆瓣ID">
-				<el-input v-model="formInline.id" placeholder="ID"></el-input>
-			</el-form-item>
-			<el-form-item>
-				{{checkedCities}}
-				<el-checkbox v-model="checkAll" @change="handleCheckAllChange">全选</el-checkbox>
-				<div style="margin: 15px 0;"></div>
-				<el-checkbox-group
-					v-model="checkedCities"
-					@change="handleCheckedCitiesChange"
-				>
-					<el-checkbox
-						v-for="(item,key) in categories"
-						:label="key"
-						:key="key"
-					>{{item}}</el-checkbox>
-				</el-checkbox-group>
-			</el-form-item>
+		<el-form inline :model="formInline" class="demo-form-inline">
+			<el-row :gutter="20">
+				<el-form-item label="豆瓣ID">
+					<el-input v-model="formInline.id" placeholder="请输入豆瓣ID"></el-input>
+				</el-form-item>
+			</el-row>
+			<el-row :gutter="20">
+				<el-form-item>
+					<el-checkbox v-model="checkAll" @change="handleCheckAllChange">全选</el-checkbox>
+					<div style="margin: 15px 0;"></div>
+					<el-checkbox-group
+						v-model="checkedCities"
+						@change="handleCheckedCitiesChange"
+					>
+						<el-checkbox
+							v-for="(item,key) in categories"
+							:label="key"
+							:key="key"
+						>{{item}}</el-checkbox>
+					</el-checkbox-group>
+				</el-form-item>
+			</el-row>
 			<el-form-item>
 				<el-button type="primary" @click="getData">查询</el-button>
 				<el-popover
@@ -29,6 +32,15 @@
 					content="只能备份书影音相册"
 				>
 					<el-button slot="reference" type="primary" @click="getBackup">简单备份</el-button>
+				</el-popover>
+				<el-popover
+					placement="top-start"
+					title="高级备份"
+					width="200"
+					trigger="hover"
+					content="可以备份所有数据，需要登录"
+				>
+					<el-button slot="reference" type="primary" @click="getBackup">高级备份</el-button>
 				</el-popover>
 			</el-form-item>
 		</el-form>
@@ -174,8 +186,10 @@ export default {
 	methods: {
 		handleCheckAllChange(val) {
 			this.checkedCities = val ? Object.keys(this.categories) : []
+			this.$store.commit("setBackups", this.checkedCities)
 		},
 		handleCheckedCitiesChange(value) {
+			this.$store.commit("setBackups", value)
 			let checkedCount = value.length
 			this.checkAll = checkedCount === Object.keys(this.categories).length
 		},

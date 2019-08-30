@@ -158,10 +158,11 @@ async function getFollower() {
  */
 export const backup = async id => {
   let workbook = new Excel.Workbook()
-  await movieToExcel(id, workbook)
-  await bookToExcel(id, workbook)
-  await musicToExcel(id, workbook)
-  await getImgs(id)
+  let backups = store.state.backups
+  if (backups.includes('movie')) await movieToExcel(id, workbook)
+  if (backups.includes('book')) await bookToExcel(id, workbook)
+  if (backups.includes('music')) await musicToExcel(id, workbook)
+  if (backups.includes('photo')) await getImgs(id)
   return await workbook.xlsx
     .writeFile(`douban${id}.xlsx`)
     .then(function() {

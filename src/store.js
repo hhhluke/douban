@@ -12,11 +12,16 @@ export default new Vuex.Store({
       music: { collect: 0, wish: 0 },
       photo: 0,
       friend: { star: 0, follower: 0 }
-    }
+    },
+    backups: []
   },
   mutations: {
     setBase(state, data) {
       state.base = data
+    },
+    setBackups(state, data) {
+      state.backups = data
+      console.log(data)
     }
   },
   actions: {
