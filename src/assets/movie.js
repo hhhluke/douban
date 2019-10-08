@@ -1,7 +1,21 @@
-import { flattenPromise, pagesToArray, getNumFromString } from './utils'
+import { pagesToArray, getNumFromString, mapLimit } from './utils'
 import store from '../store'
 import { getDom } from './crawler'
 const COUNT_15 = 15
+const SAW_COLUMN = [
+  { header: 'Id', key: 'id', width: 10 },
+  { header: '电影名称', key: 'movie', width: 30 },
+  { header: '链接', key: 'link', width: 46 },
+  { header: '简评', key: 'comment', width: 20 },
+  { header: '评分', key: 'rank', width: 10 },
+  { header: '日期', key: 'date', width: 10 }
+]
+const WISH_COLUMN = [
+  { header: 'Id', key: 'id', width: 10 },
+  { header: '电影名称', key: 'movie', width: 30 },
+  { header: '链接', key: 'link', width: 46 },
+  { header: '日期', key: 'date', width: 10 }
+]
 /**
  *获取已看电影数据
  * @param {String} url
@@ -9,45 +23,43 @@ const COUNT_15 = 15
  * @returns {Array}
  */
 async function getSawMovie(id) {
-  let pages = pagesToArray(store.state.base.movie.saw, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://movie.douban.com/people/${id}/collect?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.grid-view .item .info').each((_, item) => {
-          _arr.push({
-            movie: $(item)
-              .find('.title a em')
-              .text()
-              .split('/')[0]
-              .trim(),
-            link: $(item)
-              .find('.title a')
-              .attr('href'),
-            date: $(item)
-              .find('.date')
-              .text(),
-            rank: $(item)
-              .find('.date')
-              .prev()
-              .attr('class')
-              ? getNumFromString(
-                  $(item)
-                    .find('.date')
-                    .prev()
-                    .attr('class')
-                )
-              : '',
-            comment: $(item)
-              .find('.comment')
-              .text()
-          })
+  let pages = pagesToArray(store.state.base.movie.collect, COUNT_15)
+  return await mapLimit(pages, async (page, callback) => {
+    let url = `https://movie.douban.com/people/${id}/collect?start=${page}&sort=time&rating=all&filter=all&mode=grid`
+    getDom(url).then($ => {
+      let _arr = []
+      $('.grid-view .item .info').each((_, item) => {
+        _arr.push({
+          movie: $(item)
+            .find('.title a em')
+            .text()
+            .split('/')[0]
+            .trim(),
+          link: $(item)
+            .find('.title a')
+            .attr('href'),
+          date: $(item)
+            .find('.date')
+            .text(),
+          rank: $(item)
+            .find('.date')
+            .prev()
+            .attr('class')
+            ? getNumFromString(
+                $(item)
+                  .find('.date')
+                  .prev()
+                  .attr('class')
+              )
+            : '',
+          comment: $(item)
+            .find('.comment')
+            .text()
         })
-        return _arr
       })
+      callback(null, _arr)
     })
-  )
+  })
 }
 /**
  *获取想看电影数据
@@ -57,30 +69,28 @@ async function getSawMovie(id) {
  */
 async function getWishMovie(id) {
   let pages = pagesToArray(store.state.base.movie.wish, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://movie.douban.com/people/${id}/wish?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.grid-view .item .info').each((_, item) => {
-          _arr.push({
-            movie: $(item)
-              .find('.title a em')
-              .text()
-              .split('/')[0]
-              .trim(),
-            link: $(item)
-              .find('.title a')
-              .attr('href'),
-            date: $(item)
-              .find('.date')
-              .text()
-          })
+  return await mapLimit(pages, async (page, callback) => {
+    let url = `https://movie.douban.com/people/${id}/wish?start=${page}&sort=time&rating=all&filter=all&mode=grid`
+    getDom(url).then($ => {
+      let _arr = []
+      $('.grid-view .item .info').each((_, item) => {
+        _arr.push({
+          movie: $(item)
+            .find('.title a em')
+            .text()
+            .split('/')[0]
+            .trim(),
+          link: $(item)
+            .find('.title a')
+            .attr('href'),
+          date: $(item)
+            .find('.date')
+            .text()
         })
-        return _arr
       })
+      callback(null, _arr)
     })
-  )
+  })
 }
 
 /**
@@ -88,7 +98,21 @@ async function getWishMovie(id) {
  * @returns {Array}
  */
 export const getMovies = async id => {
-  let saw = await getSawMovie(id),
-    wish = await getWishMovie(id)
-  return [saw, wish]
+  return [await getSawMovie(id), await getWishMovie(id)]
+}
+
+/**
+ * 电影数据写入excel
+ * @param {Number} id
+ * @param {*} workbook
+ */
+export const movieToExcel = async (id, workbook) => {
+  let [saw, wish] = await getMovies(id)
+  let sheetSaw = workbook.addWorksheet('电影-已看'),
+    sheetWish = workbook.addWorksheet('电影-想看')
+  sheetSaw.columns = SAW_COLUMN
+  sheetWish.columns = WISH_COLUMN
+
+  sheetSaw.addRows(saw)
+  sheetWish.addRows(wish)
 }

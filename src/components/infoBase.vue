@@ -1,11 +1,47 @@
 <template>
 	<div class="hello">
-		<el-form :inline="true" :model="formInline" class="demo-form-inline">
-			<el-form-item label="豆瓣ID">
-				<el-input v-model="formInline.id" placeholder="ID"></el-input>
-			</el-form-item>
+		<el-form inline :model="formInline" class="demo-form-inline">
+			<el-row :gutter="20">
+				<el-form-item label="豆瓣ID">
+					<el-input v-model="formInline.id" placeholder="请输入豆瓣ID"></el-input>
+				</el-form-item>
+			</el-row>
+			<el-row :gutter="20">
+				<el-form-item>
+					<el-checkbox v-model="checkAll" @change="handleCheckAllChange">全选</el-checkbox>
+					<div style="margin: 15px 0;"></div>
+					<el-checkbox-group
+						v-model="checkedCities"
+						@change="handleCheckedCitiesChange"
+					>
+						<el-checkbox
+							v-for="(item,key) in categories"
+							:label="key"
+							:key="key"
+						>{{item}}</el-checkbox>
+					</el-checkbox-group>
+				</el-form-item>
+			</el-row>
 			<el-form-item>
 				<el-button type="primary" @click="getData">查询</el-button>
+				<el-popover
+					placement="top-start"
+					title="简单备份"
+					width="200"
+					trigger="hover"
+					content="只能备份书影音相册"
+				>
+					<el-button slot="reference" type="primary" @click="getBackup">简单备份</el-button>
+				</el-popover>
+				<el-popover
+					placement="top-start"
+					title="高级备份"
+					width="200"
+					trigger="hover"
+					content="可以备份所有数据，需要登录"
+				>
+					<el-button slot="reference" type="primary" @click="getBackup">高级备份</el-button>
+				</el-popover>
 			</el-form-item>
 		</el-form>
 		<el-row :gutter="20">
@@ -29,24 +65,37 @@
 			<el-button type="primary" @click="getMovie">查询电影</el-button>
 			<el-button type="primary" @click="demo">查询关注</el-button>
 			<el-button type="primary" @click="log">登录</el-button>
-			<el-button type="primary" @click="pdf">广播</el-button>
+			<el-button type="primary" @click="music">音乐</el-button>
 			<el-button type="primary" @click="img">图片</el-button>
+			<el-button type="primary" @click="game">游戏</el-button>
 		</el-row>
 	</div>
 </template>
 
 <script>
-import { getBaseData, movieToExcel, getStar, log, pdf } from "../assets/crawler"
+import { getBaseData, movieToExcel, getStar, log, backup } from "../assets/crawler"
 import { getImgs } from "../assets/image"
+import { getMusics } from "../assets/music"
+import { getMovies } from "../assets/movie"
+import { getGames } from "../assets/game"
 import { mapState } from "vuex"
 import infoCard from "./infoCard"
-const { BrowserWindow } = require("electron")
 
 export default {
 	name: "HelloWorld",
 	components: { infoCard },
 	data() {
 		return {
+			checkAll: false,
+			checkedCities: [],
+			categories: {
+				movie: "电影",
+				music: "音乐",
+				book: "图书",
+				game: "游戏",
+				photo: "相册",
+				diary: "日记"
+			},
 			formInline: {
 				id: "Skiboo"
 			},
@@ -81,12 +130,12 @@ export default {
 					title: "想读",
 					icon: "el-icon-reading",
 					count: this.base.book.wish,
-					color: "#19be6b"
+					color: "#ff9900"
 				},
 				{
 					title: "玩过",
 					icon: "el-icon-reading",
-					count: this.base.game.wish,
+					count: this.base.game.collect,
 					color: "#19be6b"
 				},
 				{
@@ -98,7 +147,7 @@ export default {
 				{
 					title: "听过",
 					icon: "el-icon-reading",
-					count: this.base.music.wish,
+					count: this.base.music.collect,
 					color: "#19be6b"
 				},
 				{
@@ -135,33 +184,52 @@ export default {
 		}
 	},
 	methods: {
+		handleCheckAllChange(val) {
+			this.checkedCities = val ? Object.keys(this.categories) : []
+			this.$store.commit("setBackups", this.checkedCities)
+		},
+		handleCheckedCitiesChange(value) {
+			this.$store.commit("setBackups", value)
+			let checkedCount = value.length
+			this.checkAll = checkedCount === Object.keys(this.categories).length
+		},
+		getBackup() {
+			backup(this.formInline.id)
+		},
 		img() {
 			getImgs(this.formInline.id)
+		},
+		async game() {
+			let res = await getGames(this.formInline.id)
+			console.log("game", res)
 		},
 		log() {
 			log()
 		},
-		pdf() {
-			pdf()
+		async music() {
+			let a = await getMusics(this.formInline.id)
+			console.log("music", a)
 		},
 		async getData() {
 			let res = await getBaseData(this.formInline.id)
 			this.$store.commit("setBase", res)
 		},
 		async getMovie() {
-			const loading = this.$loading({
-				lock: true,
-				text: "Loading",
-				spinner: "el-icon-loading",
-				background: "rgba(0, 0, 0, 0.7)"
-			})
-			let res = await movieToExcel(this.formInline.id)
-			if (res) {
-				this.$message.success("导出成功!")
-			} else {
-				this.$message.error("失败，请检查文件是否处于打开状态,若是，请关闭该文件")
-			}
-			loading.close()
+			let res = await getMovies(this.formInline.id)
+			console.log(res)
+			// const loading = this.$loading({
+			// 	lock: true,
+			// 	text: "Loading",
+			// 	spinner: "el-icon-loading",
+			// 	background: "rgba(0, 0, 0, 0.7)"
+			// })
+			// let res = await movieToExcel(this.formInline.id)
+			// if (res) {
+			// 	this.$message.success("导出成功!")
+			// } else {
+			// 	this.$message.error("失败，请检查文件是否处于打开状态,若是，请关闭该文件")
+			// }
+			// loading.close()
 		},
 		async demo() {
 			let res = await getStar()

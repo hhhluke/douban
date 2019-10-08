@@ -37,8 +37,10 @@ import {
   flatten,
   getDateFromString
 } from './utils'
-import { getBooks } from './book'
-import { getMovies } from './book'
+import { bookToExcel } from './book'
+import { getMovies, movieToExcel } from './movie'
+import { musicToExcel } from './music'
+import { getImgs } from './image'
 import store from '../store'
 
 /**
@@ -89,86 +91,6 @@ export const getBaseData = async id => {
     return _data
   })
   return res
-}
-/**
- *获取已看电影数据
- * @param {String} url
- * @param {Number} id
- * @returns {Array}
- */
-async function getSawMovie(id) {
-  let pages = pagesToArray(store.state.base.movie.saw, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://movie.douban.com/people/${id}/collect?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.grid-view .item .info').each((_, item) => {
-          _arr.push({
-            movie: $(item)
-              .find('.title a em')
-              .text()
-              .split('/')[0]
-              .trim(),
-            link: $(item)
-              .find('.title a')
-              .attr('href'),
-            date: $(item)
-              .find('.date')
-              .text(),
-            rank: $(item)
-              .find('.date')
-              .prev()
-              .attr('class')
-              ? getNumFromString(
-                  $(item)
-                    .find('.date')
-                    .prev()
-                    .attr('class')
-                )
-              : '',
-            comment: $(item)
-              .find('.comment')
-              .text()
-          })
-        })
-        return _arr
-      })
-    })
-  )
-}
-/**
- *获取想看电影数据
- * @param {String} url
- * @param {Number} id
- * @returns {Array}
- */
-async function getWishMovie(id) {
-  let pages = pagesToArray(store.state.base.movie.wish, COUNT_15)
-  return flattenPromise(
-    pages.map(async item => {
-      let url = `https://movie.douban.com/people/${id}/wish?start=${item}&sort=time&rating=all&filter=all&mode=grid`
-      return await getDom(url).then($ => {
-        let _arr = []
-        $('.grid-view .item .info').each((_, item) => {
-          _arr.push({
-            movie: $(item)
-              .find('.title a em')
-              .text()
-              .split('/')[0]
-              .trim(),
-            link: $(item)
-              .find('.title a')
-              .attr('href'),
-            date: $(item)
-              .find('.date')
-              .text()
-          })
-        })
-        return _arr
-      })
-    })
-  )
 }
 
 /**
@@ -228,81 +150,29 @@ async function getFollower() {
     })
   )
 }
-/**
- *
- * 电影数据转excel
- * @param {Number} id
- * @returns {Excel}
- */
-export const movieToExcel = async id => {
-  let resStar = await getStar(),
-    resFollower = await getFollower()
-  let [resSawMovie, resWishMovie] = await getMovies(id)
-  let [resSawBook, resWishBook] = await getBooks(id)
-  let workbook = new Excel.Workbook()
-  let sheetSawMovie = workbook.addWorksheet('电影-已看'),
-    sheetWishMovie = workbook.addWorksheet('电影-想看'),
-    sheetSawBook = workbook.addWorksheet('图书-已读'),
-    sheetWishBook = workbook.addWorksheet('图书-想读'),
-    sheetStar = workbook.addWorksheet('关注'),
-    sheetFollower = workbook.addWorksheet('被关注')
-  sheetStar.columns = [
-    { header: '名称', key: 'name', width: 10 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '地址', key: 'address', width: 10 },
-    { header: '签名', key: 'signature', width: 20 }
-  ]
-  sheetFollower.columns = [
-    { header: '名称', key: 'name', width: 10 },
-    { header: '链接', key: 'link', width: 46 }
-  ]
-  sheetSawMovie.columns = [
-    { header: 'Id', key: 'id', width: 10 },
-    { header: '电影名称', key: 'movie', width: 30 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '简评', key: 'comment', width: 20 },
-    { header: '评分', key: 'rank', width: 10 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
-  sheetWishMovie.columns = [
-    { header: 'Id', key: 'id', width: 10 },
-    { header: '电影名称', key: 'movie', width: 30 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
-  sheetSawBook.columns = [
-    { header: 'Id', key: 'id', width: 16 },
-    { header: '书名', key: 'book', width: 32 },
-    { header: '作者', key: 'author', width: 16 },
-    { header: '译者', key: 'translator', width: 16 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '简评', key: 'comment', width: 10 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
-  sheetWishBook.columns = [
-    { header: 'Id', key: 'id', width: 10 },
-    { header: '书名', key: 'book', width: 32 },
-    { header: '作者', key: 'author', width: 16 },
-    { header: '译者', key: 'translator', width: 16 },
-    { header: '链接', key: 'link', width: 46 },
-    { header: '日期', key: 'date', width: 10 }
-  ]
 
-  sheetSawMovie.addRows(resSawMovie)
-  sheetWishMovie.addRows(resWishMovie)
-  sheetSawBook.addRows(resSawBook)
-  sheetWishBook.addRows(resWishBook)
-  sheetStar.addRows(resStar)
-  sheetFollower.addRows(resFollower)
+/**
+ * 简单备份(书影音照片)
+ * @param {Number/String} id
+ * @returns
+ */
+export const backup = async id => {
+  let workbook = new Excel.Workbook()
+  let backups = store.state.backups
+  if (backups.includes('movie')) await movieToExcel(id, workbook)
+  if (backups.includes('book')) await bookToExcel(id, workbook)
+  if (backups.includes('music')) await musicToExcel(id, workbook)
+  if (backups.includes('photo')) await getImgs(id)
   return await workbook.xlsx
-    .writeFile('douban.xlsx')
+    .writeFile(`douban${id}.xlsx`)
     .then(function() {
       return true
     })
-    .catch(e => {
+    .catch(_ => {
       return false
     })
 }
+<<<<<<< HEAD
 
 export const pdf = async () => {
   let url = `https://www.douban.com/?p=1`
@@ -312,3 +182,5 @@ export const pdf = async () => {
     })
   })
 }
+=======
+>>>>>>> 23ed75e2abd061d87cc77b2ec2a0947f6f78cb7c
